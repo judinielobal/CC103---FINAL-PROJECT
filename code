@@ -1,0 +1,271 @@
+package bombrush;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+// para mag random do bombs every time mag start do game
+import java.util.Random;
+
+// para mag gana do sounds
+import javax.sound.sampled.*;
+import java.io.File;
+
+public class BombRush extends JFrame implements ActionListener {
+
+    JButton[] buttons = new JButton[25];
+    JLabel statusLabel = new JLabel();
+    JButton resetButton = new JButton();
+
+    int score = 0;
+    int highScore = 0;
+
+    // ga add it bombs
+    int[] bombIndexes = new int[5];
+
+    public BombRush() {
+
+        setTitle("Bomb Rush");
+        setSize(500, 550);
+        setLayout(new BorderLayout());
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Status label
+        statusLabel = new JLabel("Score: 0 | High Score: 0", SwingConstants.CENTER);
+        statusLabel.setFont(new Font("Arial", Font.BOLD, 20));
+        statusLabel.setOpaque(true);
+        statusLabel.setBackground(Color.BLACK);
+        statusLabel.setForeground(Color.GREEN);
+
+        // Game board
+        JPanel boardPanel = new JPanel();
+
+        // tag layout nga 5x5
+        boardPanel.setLayout(new GridLayout(5, 5, 2, 2));
+        boardPanel.setBackground(Color.DARK_GRAY);
+
+        for (int i = 0; i < buttons.length; i++) {
+
+            buttons[i] = new JButton("?");
+            buttons[i].setFont(new Font("Arial", Font.BOLD, 25));
+            buttons[i].setFocusPainted(false);
+            buttons[i].setBackground(new Color(40, 40, 40));
+            buttons[i].setForeground(Color.WHITE);
+
+            buttons[i].addActionListener(this);
+
+            boardPanel.add(buttons[i]);
+        }
+
+        // Reset button
+        resetButton = new JButton("Reset");
+        resetButton.setFont(new Font("Arial", Font.BOLD, 18));
+        resetButton.setBackground(Color.ORANGE);
+
+        resetButton.addActionListener(e -> resetGame());
+
+        add(statusLabel, BorderLayout.NORTH);
+        add(boardPanel, BorderLayout.CENTER);
+        add(resetButton, BorderLayout.SOUTH);
+        // para mag center do jframe
+        setLocationRelativeTo(null);
+
+        // Generate bombs
+        generateBombs();
+
+        // Greeting popup
+        JOptionPane.showMessageDialog(this,
+                "Welcome to Bomb Rush!\n\nFind all the safe spots without exploding any bomb.\nGood Luck!",
+                "Game Start",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+
+        JButton clicked = (JButton) e.getSource();
+
+        int index = -1;
+
+        for (int i = 0; i < buttons.length; i++) {
+
+            if (clicked == buttons[i]) {
+                index = i;
+                break;
+            }
+        }
+
+        // Prevent clicking same tile
+        if (!clicked.getText().equals("?")) {
+            return;
+        }
+
+        // Check if bomb
+        boolean isBomb = false;
+
+        for (int bomb : bombIndexes) {
+
+            if (index == bomb) {
+                isBomb = true;
+               // break;
+            }
+        }
+
+        // Bomb clicked
+        if (isBomb) {
+            disableButtons();
+
+            if (score > highScore) {
+                highScore = score;
+            }
+
+            updateStatus();
+
+            // Bomb sound
+            playSound("src/bombrush/bomb.wav");
+
+            clicked.setText("X");
+            clicked.setBackground(Color.RED);
+
+            statusLabel.setText("Game Over!");
+
+            JOptionPane.showMessageDialog(this,
+                    "Boom! You clicked a bomb!\nScore: " + score + "\nHigh Score: " + highScore);
+
+            // Reveal all bombs
+            for (int bomb : bombIndexes) {
+
+                buttons[bomb].setText("X");
+                buttons[bomb].setBackground(Color.RED);
+            }
+
+            // Auto reset after 0.8 seconds
+            Timer timer = new Timer(800, event -> resetGame());
+            timer.setRepeats(false);
+            timer.start();
+
+            return;
+        }
+
+        // Safe tile sound
+        playSound("src/bombrush/click.wav");
+
+        // Safe tile
+        clicked.setText("O");
+        clicked.setForeground(Color.GREEN);
+        clicked.setBackground(Color.BLACK);
+
+        score++;
+        updateStatus();
+
+        // Win condition
+        if (score == buttons.length - bombIndexes.length) {
+
+            disableButtons();
+
+            if (score > highScore) {
+                highScore = score;
+            }
+
+            updateStatus();
+
+            playSound("src/bombrush/win.wav");
+
+            JOptionPane.showMessageDialog(this,
+                    "You Win! You found all safe tiles!\nScore: " + score
+                    + "\nHigh Score: " + highScore);
+
+            Timer timer = new Timer(800, event -> resetGame());
+            timer.setRepeats(false);
+            timer.start();
+        }
+    }
+
+    // Generate random bombs
+    public void generateBombs() {
+
+        Random random = new Random();
+
+        for (int i = 0; i < bombIndexes.length; i++) {
+
+            boolean duplicate;
+
+            do {
+
+                duplicate = false;
+
+                bombIndexes[i] = random.nextInt(buttons.length);
+
+                for (int j = 0; j < i; j++) {
+
+                    if (bombIndexes[i] == bombIndexes[j]) {
+
+                        duplicate = true;
+                        break;
+                    }
+                }
+
+            } while (duplicate);
+        }
+    }
+
+    // Reset game
+    public void resetGame() {
+
+        for (JButton btn : buttons) {
+
+            playSound("src/bombrush/reset.wav");
+            
+            btn.setText("?");
+            btn.setBackground(new Color(40, 40, 40));
+            btn.setForeground(Color.WHITE);
+
+            // enable buttons again
+            btn.setEnabled(true);
+        }
+
+        score = 0;
+
+        statusLabel.setText("Score: 0 | High Score: " + highScore);
+
+        generateBombs();
+    }
+
+    // ga dissable it button after mag-uwa do result
+    public void disableButtons() {
+
+        for (JButton btn : buttons) {
+
+            btn.setEnabled(false);
+        }
+    }
+
+    // para sa high score
+    public void updateStatus() {
+        statusLabel.setText("Score: " + score + " | High Score: " + highScore);
+    }
+
+    // daya do sound method
+    public void playSound(String soundFile) {
+
+        try {
+
+            AudioInputStream audioInput = AudioSystem.getAudioInputStream(
+                    new File(soundFile));
+
+            Clip clip = AudioSystem.getClip();
+
+            clip.open(audioInput);
+
+            clip.start();
+
+        } catch (Exception e) {
+
+            System.out.println("Sound Error");
+        }
+    }
+
+    public static void main(String[] args) {
+        BombRush window = new BombRush();
+        window.setVisible(true);
+    }
+}
