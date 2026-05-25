@@ -1,0 +1,290 @@
+package bombrush;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Random;
+
+public class BombRush extends JFrame implements ActionListener {
+
+    JButton[] buttons = new JButton[100];
+    int[] bombs = new int[25];
+
+    int score = 0;
+    int highScore = 0;
+
+    String playerName = "";
+    String highScorePlayer = "";
+
+    JLabel label = new JLabel();
+    Random random = new Random();
+    HighScoreRecorder record = new HighScoreRecorder();
+
+    boolean gameOver = false;
+
+    JMenuBar menuBar = new JMenuBar();
+    JMenu gameMenu = new JMenu();
+    JMenuItem newGameItem = new JMenuItem();
+    JMenuItem rulesItem = new JMenuItem();
+    JMenuItem exitItem = new JMenuItem();
+
+    Color bgColor = new Color(25, 25, 25);
+    Color tileColor = new Color(45, 45, 45);
+    Color textColor = Color.WHITE;
+
+    public BombRush() {
+
+        String input;
+
+        while (true) {
+
+            input = JOptionPane.showInputDialog(null, "Welcome to Bomb Rush!\nRead the rules in the Game menu.\n\nEnter Player Name:", "Start Game", JOptionPane.PLAIN_MESSAGE);
+
+            if (input == null) {
+                continue;
+            }
+
+            if (PlayerNameValidator.isValid(input)) {
+                playerName = input;
+                break;
+            }
+
+            JOptionPane.showMessageDialog(null, "Only letters and spaces allowed!");
+        }
+
+        // LOAD SAVED HIGH SCORE DATA
+        highScorePlayer = record.loadPlayerName();
+        highScore = record.loadHighScore();
+
+        setTitle("Bomb Rush - " + playerName);
+        setSize(600, 600);
+        setLayout(new BorderLayout());
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        getContentPane().setBackground(bgColor);
+
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        label.setFont(new Font("Arial", Font.BOLD, 18));
+        label.setForeground(textColor);
+
+        updateLabel();
+        add(label, BorderLayout.NORTH);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(10, 10));
+        panel.setBackground(bgColor);
+
+        for (int i = 0; i < buttons.length; i++) {
+
+            buttons[i] = new JButton("?");
+            buttons[i].setFont(new Font("Arial", Font.BOLD, 14));
+            buttons[i].setBackground(tileColor);
+            buttons[i].setForeground(textColor);
+            buttons[i].setFocusPainted(false);
+
+            buttons[i].addActionListener(this);
+
+            panel.add(buttons[i]);
+        }
+
+        add(panel);
+
+        generateBombs();
+
+        menuBar = new JMenuBar();
+        gameMenu = new JMenu("Game");
+        newGameItem = new JMenuItem("New Game");
+        newGameItem.addActionListener(this);
+        gameMenu.add(newGameItem);
+        menuBar.add(gameMenu);
+        rulesItem = new JMenuItem("Rules");
+        rulesItem.addActionListener(this);
+        gameMenu.add(rulesItem);
+        exitItem = new JMenuItem("Exit");
+        exitItem.addActionListener(this);
+        gameMenu.add(exitItem);
+        setJMenuBar(menuBar);
+
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == exitItem) {
+            System.exit(0);
+        }
+        
+        if (e.getSource() == rulesItem) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "BOMB RUSH RULES:\n\n"
+                    + "1. Click tiles to gain points\n"
+                    + "2. Avoid bombs (X)\n"
+                    + "3. Safe tiles (O) give +1 score\n"
+                    + "4. If you hit a bomb, you lose\n"
+                    + "5. Try to clear all safe tiles to win\n"
+                    + "Good Luck!\n",
+                    "Game Rules",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            return;
+        }
+        if (e.getSource() == newGameItem) {
+            resetGame();
+            return;
+        }
+
+        if (gameOver) {
+            return;
+        }
+
+        JButton clicked = (JButton) e.getSource();
+
+        if (!clicked.isEnabled()) {
+            return;
+        }
+
+        int index = -1;
+
+        for (int i = 0; i < buttons.length; i++) {
+            if (clicked == buttons[i]) {
+                index = i;
+                break;
+            }
+        }
+
+        boolean bomb = false;
+
+        for (int b : bombs) {
+            if (index == b) {
+                bomb = true;
+                break;
+            }
+        }
+
+        // ===== BOMB =====
+        if (bomb) {
+
+            gameOver = true;
+
+            AudioPlayer.play("/bombrush/bomb.wav");
+
+            clicked.setText("X");
+            clicked.setBackground(Color.RED);
+
+            for (int b : bombs) {
+                buttons[b].setText("X");
+                buttons[b].setBackground(Color.RED);
+            }
+
+            JOptionPane.showMessageDialog(this,
+                    playerName + " lost!\nScore: " + score);
+
+            resetGame();
+        } // ===== SAFE =====
+        else {
+
+            AudioPlayer.play("/bombrush/click.wav");
+
+            clicked.setText("O");
+            clicked.setBackground(Color.GREEN);
+            clicked.setEnabled(false);
+
+            score++;
+
+            if (score > highScore) {
+
+                highScore = score;
+
+                highScorePlayer = playerName;
+
+                record.saveHighScore(highScorePlayer, highScore);
+            }
+
+            updateLabel();
+
+            // WIN CHECK
+            if (score >= (buttons.length - bombs.length)) {
+
+                gameOver = true;
+
+                AudioPlayer.play("/bombrush/win.wav");
+
+                JOptionPane.showMessageDialog(this,
+                        playerName + " WIN!");
+
+                resetGame();
+            }
+        }
+    }
+
+    public void generateBombs() {
+
+        boolean duplicate;
+
+        for (int i = 0; i < bombs.length; i++) {
+
+            do {
+                duplicate = false;
+                bombs[i] = random.nextInt(buttons.length);
+
+                for (int j = 0; j < i; j++) {
+                    if (bombs[i] == bombs[j]) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+
+            } while (duplicate);
+        }
+    }
+
+    public void updateLabel() {
+
+        label.setText("Player: " + playerName + " | Score: " + score + " | High Score: " + highScore + " (" + highScorePlayer + ")");
+    }
+
+    public void resetGame() {
+        // ASK NEW PLAYER NAME
+        String input;
+
+        while (true) {
+
+            input = JOptionPane.showInputDialog(null, "Enter Player Name:", "New Game", JOptionPane.PLAIN_MESSAGE);
+
+            if (input == null) {
+                continue;
+            }
+
+            if (PlayerNameValidator.isValid(input)) {
+                playerName = input;
+                break;
+            }
+
+            JOptionPane.showMessageDialog(null, "Only letters and spaces allowed!");
+        }
+
+        score = 0;
+        gameOver = false;
+
+        setTitle("Bomb Rush - " + playerName);
+
+        updateLabel();
+
+        for (int i = 0; i < buttons.length; i++) {
+
+            buttons[i].setText("?");
+            buttons[i].setBackground(tileColor);
+            buttons[i].setEnabled(true);
+        }
+
+        generateBombs();
+    }
+
+    public static void main(String[] args) {
+        new BombRush();
+    }
+}
