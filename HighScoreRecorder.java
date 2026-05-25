@@ -1,0 +1,72 @@
+package bombrush;
+
+import java.io.*;
+
+public class HighScoreRecorder {
+
+    File file = new File("highscore.txt");
+
+    public void saveHighScore(String playerName, int highScore) {
+
+        try {
+
+            PrintWriter writer = new PrintWriter(file);
+
+            writer.println(playerName);
+            writer.println(highScore);
+
+            writer.close();
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    public String loadPlayerName() {
+
+        try {
+
+            if (!file.exists()) {
+                return "";
+            }
+
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+
+            String name = reader.readLine();
+
+            reader.close();
+
+            return name;
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        return "";
+    }
+
+    public int loadHighScore() {
+
+        try {
+
+            if (!file.exists()) {
+                return 0;
+            }
+
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+
+            reader.readLine();
+
+            int score = Integer.parseInt(reader.readLine());
+
+            reader.close();
+
+            return score;
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        return 0;
+    }
+}
