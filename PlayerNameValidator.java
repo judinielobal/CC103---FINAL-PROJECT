@@ -1,0 +1,13 @@
+package bombrush;
+
+public class PlayerNameValidator {
+
+    public static boolean isValid(String playerName) {
+
+        if (playerName == null) {
+            return false;
+        }
+
+        return playerName.matches("[A-Za-z ]+");
+    }
+}
