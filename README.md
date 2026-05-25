@@ -1,5 +1,5 @@
 # CC103---FINAL-PROJECT
-BombRush Game Project
+Bomb Rush Game Project
 
 Group Members
 1. Judiniel Obal
